@@ -20,14 +20,21 @@ export default function UserList({
       // Fetch file info from API
       const fileInfo = await userAPI.downloadFile(userId);
 
-      // Create a temporary link and trigger download
+      // For Cloudinary URLs, we need to fetch the file as a blob and download it
+      const response = await fetch(fileInfo.url);
+      const blob = await response.blob();
+
+      // Create blob URL and trigger download
+      const blobUrl = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
-      link.href = fileInfo.url;
-      link.target = "_blank";
+      link.href = blobUrl;
       link.download = filename || "download";
       document.body.appendChild(link);
       link.click();
+
+      // Cleanup
       document.body.removeChild(link);
+      window.URL.revokeObjectURL(blobUrl);
     } catch (error) {
       console.error("Download error:", error);
       alert("Failed to download file");
