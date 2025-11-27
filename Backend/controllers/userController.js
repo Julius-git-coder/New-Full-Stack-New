@@ -1,19 +1,19 @@
-// Backend/controllers/userController.js (updated - exclude auth user from list)
+// Backend/controllers/userController.js (fixed - no double hashing)
 import UserModel from "../models/userModel.js";
 import cloudinary from "../config/cloudinary.js";
-import bcrypt from "bcryptjs";
 
 // Get all users (only owner's managed users, exclude self)
 export const getAllUsers = async (req, res) => {
   try {
     const users = await UserModel.find({
       ownerId: req.user._id,
-      _id: { $ne: req.user._id }, // Exclude the auth user themselves
+      _id: { $ne: req.user._id },
     })
       .sort({ createdAt: -1 })
       .select("-password");
     res.status(200).json(users);
   } catch (error) {
+    console.error("Get all users error:", error);
     res.status(500).json({
       error: "Failed to fetch users",
       details: error.message,
@@ -35,6 +35,7 @@ export const getUserById = async (req, res) => {
 
     res.status(200).json(user);
   } catch (error) {
+    console.error("Get user by ID error:", error);
     res.status(500).json({
       error: "Failed to fetch user",
       details: error.message,
@@ -53,13 +54,21 @@ export const createUser = async (req, res) => {
       });
     }
 
+    // Check if email already exists
+    const existingUser = await UserModel.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({
+        error: "Email already exists",
+      });
+    }
+
     const newUser = {
       name,
       email,
-      password, // Hashed in schema
-      phone,
-      address,
-      ownerId: req.user._id, // Owned by logged-in auth user (not self)
+      password, // Will be hashed by pre-save hook
+      phone: phone || "",
+      address: address || "",
+      ownerId: req.user._id,
     };
 
     // If file is uploaded, upload to Cloudinary
@@ -114,6 +123,7 @@ export const createUser = async (req, res) => {
         address: user.address,
         hasFile: !!user.file,
         fileUrl: user.file?.url,
+        filename: user.file?.filename,
       },
     });
   } catch (error) {
@@ -128,6 +138,15 @@ export const createUser = async (req, res) => {
 // Update user (only if owned by req.user)
 export const updateUser = async (req, res) => {
   try {
+    console.log("Update user request:", {
+      userId: req.params.id,
+      body: {
+        ...req.body,
+        password: req.body.password ? "[REDACTED]" : undefined,
+      },
+      hasFile: !!req.file,
+    });
+
     const { name, email, phone, address, password } = req.body;
     const user = await UserModel.findOne({
       _id: req.params.id,
@@ -138,26 +157,39 @@ export const updateUser = async (req, res) => {
       return res.status(404).json({ error: "User not found" });
     }
 
-    // Update basic fields
-    user.name = name || user.name;
-    user.email = email || user.email;
-    user.phone = phone || user.phone;
-    user.address = address || user.address;
+    // Check if email is being changed and if it already exists
+    if (email && email !== user.email) {
+      const existingUser = await UserModel.findOne({ email });
+      if (existingUser) {
+        return res.status(400).json({
+          error: "Email already exists",
+        });
+      }
+    }
 
-    // Update password if provided
-    if (password) {
-      user.password = await bcrypt.hash(password, 10);
+    // Update basic fields
+    if (name) user.name = name;
+    if (email) user.email = email;
+    if (phone !== undefined) user.phone = phone;
+    if (address !== undefined) user.address = address;
+
+    // Update password if provided (pre-save hook will hash it)
+    if (password && password.trim() !== "") {
+      user.password = password;
     }
 
     // If new file is uploaded
     if (req.file) {
+      console.log("New file being uploaded:", req.file.originalname);
+
       // Delete old file from Cloudinary if exists
       if (user.file && user.file.publicId) {
         try {
           await cloudinary.uploader.destroy(user.file.publicId);
-          console.log("Old file deleted from Cloudinary");
+          console.log("Old file deleted from Cloudinary:", user.file.publicId);
         } catch (error) {
           console.error("Error deleting old file:", error);
+          // Continue even if deletion fails
         }
       }
 
@@ -172,8 +204,12 @@ export const updateUser = async (req, res) => {
               unique_filename: true,
             },
             (error, result) => {
-              if (error) reject(error);
-              else resolve(result);
+              if (error) {
+                console.error("Cloudinary upload error:", error);
+                reject(error);
+              } else {
+                resolve(result);
+              }
             }
           );
           uploadStream.end(req.file.buffer);
@@ -184,7 +220,13 @@ export const updateUser = async (req, res) => {
           publicId: uploadResult.public_id,
           filename: req.file.originalname,
         };
+
+        console.log(
+          "New file uploaded to Cloudinary:",
+          uploadResult.secure_url
+        );
       } catch (uploadError) {
+        console.error("Cloudinary upload failed:", uploadError);
         return res.status(400).json({
           error: "Failed to upload new file",
           details: uploadError.message,
@@ -193,6 +235,7 @@ export const updateUser = async (req, res) => {
     }
 
     await user.save();
+    console.log("User updated successfully:", user._id);
 
     res.status(200).json({
       message: "User updated successfully",
@@ -205,7 +248,8 @@ export const updateUser = async (req, res) => {
       }),
     });
   } catch (error) {
-    res.status(400).json({
+    console.error("Update user error:", error);
+    res.status(500).json({
       error: "Failed to update user",
       details: error.message,
     });
@@ -231,6 +275,7 @@ export const deleteUser = async (req, res) => {
         console.log("File deleted from Cloudinary:", user.file.publicId);
       } catch (cloudinaryError) {
         console.error("Error deleting from Cloudinary:", cloudinaryError);
+        // Continue with user deletion even if file deletion fails
       }
     }
 
@@ -240,6 +285,7 @@ export const deleteUser = async (req, res) => {
       message: "User and associated file deleted successfully",
     });
   } catch (error) {
+    console.error("Delete user error:", error);
     res.status(500).json({
       error: "Failed to delete user",
       details: error.message,
@@ -265,11 +311,16 @@ export const downloadFile = async (req, res) => {
       });
     }
 
-    // Redirect to Cloudinary URL
-    res.redirect(user.file.url);
+    // Return file info with direct URL (Cloudinary URLs are public)
+    res.status(200).json({
+      url: user.file.url,
+      filename: user.file.filename,
+      publicId: user.file.publicId,
+    });
   } catch (error) {
+    console.error("Download error:", error);
     res.status(500).json({
-      error: "Failed to download file",
+      error: "Failed to get file",
       details: error.message,
     });
   }

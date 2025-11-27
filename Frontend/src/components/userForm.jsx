@@ -6,8 +6,9 @@ import {
   Mail,
   Phone,
   MapPin,
-  Image,
+  Image as ImageIcon,
   Lock,
+  FileText,
 } from "lucide-react";
 import { userAPI } from "../services/api";
 
@@ -15,12 +16,13 @@ export default function UserForm({ onUserCreated, editingUser, onCancelEdit }) {
   const [formData, setFormData] = useState({
     name: "",
     email: "",
-    password: "", // Added for create
+    password: "",
     phone: "",
     address: "",
   });
   const [file, setFile] = useState(null);
   const [filePreview, setFilePreview] = useState(null);
+  const [fileType, setFileType] = useState(null); // Track file type
   const [dragActive, setDragActive] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -29,12 +31,20 @@ export default function UserForm({ onUserCreated, editingUser, onCancelEdit }) {
       setFormData({
         name: editingUser.name || "",
         email: editingUser.email || "",
-        password: "", // Empty for edit (optional)
+        password: "",
         phone: editingUser.phone || "",
         address: editingUser.address || "",
       });
       if (editingUser.file?.url) {
         setFilePreview(editingUser.file.url);
+        // Determine file type from URL or filename
+        const filename = editingUser.file.filename || "";
+        const ext = filename.split(".").pop()?.toLowerCase();
+        if (["jpg", "jpeg", "png", "gif", "webp", "bmp"].includes(ext)) {
+          setFileType("image");
+        } else {
+          setFileType("document");
+        }
       }
     } else {
       resetForm();
@@ -78,14 +88,17 @@ export default function UserForm({ onUserCreated, editingUser, onCancelEdit }) {
   const handleFileSelect = (selectedFile) => {
     setFile(selectedFile);
 
-    // Create preview for images
+    // Determine file type
     if (selectedFile.type.startsWith("image/")) {
+      setFileType("image");
+      // Create preview for images
       const reader = new FileReader();
       reader.onloadend = () => {
         setFilePreview(reader.result);
       };
       reader.readAsDataURL(selectedFile);
     } else {
+      setFileType("document");
       setFilePreview(null);
     }
   };
@@ -93,18 +106,37 @@ export default function UserForm({ onUserCreated, editingUser, onCancelEdit }) {
   const removeFile = () => {
     setFile(null);
     setFilePreview(null);
+    setFileType(null);
   };
 
   const resetForm = () => {
     setFormData({
       name: "",
       email: "",
-      password: "", // Reset password
+      password: "",
       phone: "",
       address: "",
     });
     setFile(null);
     setFilePreview(null);
+    setFileType(null);
+  };
+
+  const getFileIcon = (filename) => {
+    if (!filename) return "📎";
+
+    const ext = filename.split(".").pop()?.toLowerCase();
+
+    if (["jpg", "jpeg", "png", "gif", "webp", "bmp"].includes(ext)) {
+      return "🖼️";
+    } else if (ext === "pdf") {
+      return "📄";
+    } else if (["doc", "docx"].includes(ext)) {
+      return "📝";
+    } else if (ext === "txt") {
+      return "📃";
+    }
+    return "📎";
   };
 
   const handleSubmit = async (e) => {
@@ -115,7 +147,6 @@ export default function UserForm({ onUserCreated, editingUser, onCancelEdit }) {
       return;
     }
 
-    // For create, require password
     if (!editingUser && !formData.password) {
       alert("Please fill in password for new user");
       return;
@@ -128,7 +159,7 @@ export default function UserForm({ onUserCreated, editingUser, onCancelEdit }) {
       submitData.append("name", formData.name);
       submitData.append("email", formData.email);
       if (formData.password) {
-        submitData.append("password", formData.password); // Append if present (required for create)
+        submitData.append("password", formData.password);
       }
       submitData.append("phone", formData.phone);
       submitData.append("address", formData.address);
@@ -214,7 +245,7 @@ export default function UserForm({ onUserCreated, editingUser, onCancelEdit }) {
             </div>
           </div>
 
-          {/* Password - New Field */}
+          {/* Password */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Password {!editingUser && <span className="text-red-500">*</span>}
@@ -300,27 +331,27 @@ export default function UserForm({ onUserCreated, editingUser, onCancelEdit }) {
               >
                 <input
                   type="file"
-                  accept="image/*,.pdf,.doc,.docx,.txt"
+                  accept="image/*,.pdf,.doc,.docx,.txt,.rtf,.odt"
                   onChange={handleChange}
                   className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                 />
 
                 <div className="flex flex-col items-center justify-center py-12">
                   <div className="rounded-full bg-gray-100 p-3 mb-3">
-                    <Image className="w-8 h-8 text-gray-400" />
+                    <ImageIcon className="w-8 h-8 text-gray-400" />
                   </div>
                   <p className="text-sm font-medium text-gray-700 mb-1">
                     Click to upload or drag and drop
                   </p>
                   <p className="text-xs text-gray-500">
-                    Images, PDF, DOC, DOCX, TXT (max. 5MB)
+                    Images, PDF, DOC, DOCX, TXT, RTF, ODT (max. 10MB)
                   </p>
                 </div>
               </div>
             ) : (
               <div className="border border-gray-300 rounded-md p-4 bg-gray-50">
                 <div className="flex items-center gap-4">
-                  {filePreview ? (
+                  {fileType === "image" && filePreview ? (
                     <img
                       src={filePreview}
                       alt="Preview"
@@ -328,12 +359,16 @@ export default function UserForm({ onUserCreated, editingUser, onCancelEdit }) {
                     />
                   ) : (
                     <div className="w-20 h-20 flex items-center justify-center bg-gray-200 rounded-md">
-                      <Upload className="w-8 h-8 text-gray-400" />
+                      <span className="text-3xl">
+                        {getFileIcon(file?.name || editingUser?.file?.filename)}
+                      </span>
                     </div>
                   )}
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-gray-900 truncate">
-                      {file?.name || "Existing file"}
+                      {file?.name ||
+                        editingUser?.file?.filename ||
+                        "Existing file"}
                     </p>
                     {file && (
                       <p className="text-xs text-gray-500 mt-0.5">

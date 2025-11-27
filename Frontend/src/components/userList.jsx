@@ -1,4 +1,11 @@
-import { RefreshCw, Download, Edit2, Trash2, FileText } from "lucide-react";
+import {
+  RefreshCw,
+  Download,
+  Edit2,
+  Trash2,
+  FileText,
+  ExternalLink,
+} from "lucide-react";
 import { userAPI } from "../services/api";
 
 export default function UserList({
@@ -8,9 +15,40 @@ export default function UserList({
   onEdit,
   onDelete,
 }) {
-  const handleDownload = (userId) => {
-    const downloadUrl = userAPI.getDownloadUrl(userId);
-    window.open(downloadUrl, "_blank");
+  const handleDownload = async (userId, filename) => {
+    try {
+      // Fetch file info from API
+      const fileInfo = await userAPI.downloadFile(userId);
+
+      // Create a temporary link and trigger download
+      const link = document.createElement("a");
+      link.href = fileInfo.url;
+      link.target = "_blank";
+      link.download = filename || "download";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (error) {
+      console.error("Download error:", error);
+      alert("Failed to download file");
+    }
+  };
+
+  const getFileIcon = (filename) => {
+    if (!filename) return <FileText className="w-3 h-3" />;
+
+    const ext = filename.split(".").pop()?.toLowerCase();
+
+    if (["jpg", "jpeg", "png", "gif", "webp", "bmp"].includes(ext)) {
+      return "🖼️";
+    } else if (ext === "pdf") {
+      return "📄";
+    } else if (["doc", "docx"].includes(ext)) {
+      return "📝";
+    } else if (ext === "txt") {
+      return "📃";
+    }
+    return "📎";
   };
 
   return (
@@ -66,6 +104,9 @@ export default function UserList({
                           src={user.file.url}
                           alt={user.name}
                           className="w-12 h-12 rounded-full object-cover border-2 border-white shadow-sm"
+                          onError={(e) => {
+                            e.target.style.display = "none";
+                          }}
                         />
                       )}
                       <div className="flex-1 min-w-0">
@@ -96,7 +137,9 @@ export default function UserList({
                     {user.file && (
                       <div className="mt-2 ml-15">
                         <span className="inline-flex items-center gap-1 text-xs text-gray-500 bg-white px-2 py-1 rounded border border-gray-200">
-                          <FileText className="w-3 h-3" />
+                          <span className="text-base">
+                            {getFileIcon(user.file.filename)}
+                          </span>
                           {user.file.filename || "File attached"}
                         </span>
                       </div>
@@ -107,7 +150,9 @@ export default function UserList({
                   <div className="flex flex-col gap-2">
                     {user.file && (
                       <button
-                        onClick={() => handleDownload(user._id)}
+                        onClick={() =>
+                          handleDownload(user._id, user.file.filename)
+                        }
                         className="inline-flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                         title="Download file"
                       >

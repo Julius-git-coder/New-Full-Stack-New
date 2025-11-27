@@ -1,4 +1,4 @@
-// Backend/models/userModel.js (updated - ownerId no longer required)
+// Backend/models/userModel.js (verified - proper hashing)
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 
@@ -24,7 +24,7 @@ const userSchema = new mongoose.Schema(
     ownerId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      // required: false, // No longer required - set in controller
+      // Not required - set in controller
     },
     phone: {
       type: String,
@@ -47,16 +47,33 @@ const userSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Hash password before saving
+// Hash password before saving (ONLY if password is modified)
 userSchema.pre("save", async function (next) {
-  if (!this.isModified("password")) return next();
-  this.password = await bcrypt.hash(this.password, 10);
-  next();
+  // Only hash the password if it has been modified (or is new)
+  if (!this.isModified("password")) {
+    console.log("Password not modified, skipping hash");
+    return next();
+  }
+
+  try {
+    console.log("Hashing password for user:", this.email);
+    this.password = await bcrypt.hash(this.password, 10);
+    console.log("Password hashed successfully");
+    next();
+  } catch (error) {
+    console.error("Error hashing password:", error);
+    next(error);
+  }
 });
 
-// Compare password
+// Compare password method
 userSchema.methods.comparePassword = async function (password) {
-  return await bcrypt.compare(password, this.password);
+  try {
+    return await bcrypt.compare(password, this.password);
+  } catch (error) {
+    console.error("Error comparing password:", error);
+    return false;
+  }
 };
 
 export default mongoose.model("User", userSchema);
