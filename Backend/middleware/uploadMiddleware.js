@@ -3,7 +3,7 @@ import path from "path";
 
 const storage = multer.memoryStorage();
 
-// Enhanced file-type validation with better debugging
+// Enhanced file-type validation with Apple iWork support
 const fileFilter = (req, file, cb) => {
   const ext = path.extname(file.originalname).toLowerCase();
   const mime = file.mimetype.toLowerCase();
@@ -25,8 +25,18 @@ const fileFilter = (req, file, cb) => {
     "image/bmp",
   ];
 
-  // Allowed document types
-  const allowedDocExts = [".pdf", ".doc", ".docx", ".txt", ".rtf", ".odt"];
+  // Allowed document types (now includes Apple iWork formats)
+  const allowedDocExts = [
+    ".pdf",
+    ".doc",
+    ".docx",
+    ".txt",
+    ".rtf",
+    ".odt",
+    ".pages", // Apple Pages
+    ".numbers", // Apple Numbers
+    ".key", // Apple Keynote
+  ];
   const allowedDocMimes = [
     "application/pdf",
     "application/msword", // .doc
@@ -35,6 +45,12 @@ const fileFilter = (req, file, cb) => {
     "application/rtf", // .rtf
     "text/rtf", // .rtf (alternative)
     "application/vnd.oasis.opendocument.text", // .odt
+    "application/x-iwork-pages-sffpages", // .pages
+    "application/vnd.apple.pages", // .pages (alternative)
+    "application/x-iwork-numbers-sffnumbers", // .numbers
+    "application/vnd.apple.numbers", // .numbers (alternative)
+    "application/x-iwork-keynote-sffkey", // .key
+    "application/vnd.apple.keynote", // .key (alternative)
   ];
 
   // Check if it's an allowed image
@@ -79,7 +95,7 @@ const fileFilter = (req, file, cb) => {
 
   cb(
     new Error(
-      `Invalid file type! Extension: ${ext}, MIME: ${mime}. Only images (JPEG, PNG, GIF, WebP, BMP) and documents (PDF, DOC, DOCX, TXT, RTF, ODT) are allowed.`
+      `Invalid file type! Extension: ${ext}, MIME: ${mime}. Only images (JPEG, PNG, GIF, WebP, BMP) and documents (PDF, DOC, DOCX, TXT, RTF, ODT, Pages, Numbers, Keynote) are allowed.`
     ),
     false
   );
