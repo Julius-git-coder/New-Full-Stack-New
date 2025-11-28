@@ -17,27 +17,145 @@ export default function UserList({
 }) {
   const handleDownload = async (userId, filename) => {
     try {
-      // Fetch file info from API
-      const fileInfo = await userAPI.downloadFile(userId);
+      // Get the proxy URL from backend
+      const API_URL = import.meta.env.VITE_API_URL || "/api";
+      const proxyUrl = `${API_URL}/users/${userId}/download`;
 
-      // For Cloudinary URLs, we need to fetch the file as a blob and download it
-      const response = await fetch(fileInfo.url);
-      const blob = await response.blob();
+      // Get token for authentication
+      const token = localStorage.getItem("token");
 
-      // Create blob URL and trigger download
-      const blobUrl = window.URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = blobUrl;
-      link.download = filename || "download";
-      document.body.appendChild(link);
-      link.click();
+      // Check file extension
+      const ext = filename?.split(".").pop()?.toLowerCase();
+      const imageFormats = ["jpg", "jpeg", "png", "gif", "webp", "bmp"];
 
-      // Cleanup
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(blobUrl);
+      if (imageFormats.includes(ext) || ext === "pdf") {
+        // For images and PDFs, open in new tab with authentication
+        const newWindow = window.open("", "_blank");
+        newWindow.document.write(`
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <title>${filename}</title>
+              <style>
+                body {
+                  margin: 0;
+                  padding: 0;
+                  display: flex;
+                  justify-content: center;
+                  align-items: center;
+                  min-height: 100vh;
+                  background: #f5f5f5;
+                }
+                img, embed {
+                  max-width: 100%;
+                  max-height: 100vh;
+                  object-fit: contain;
+                }
+                .loading {
+                  text-align: center;
+                  font-family: system-ui;
+                  color: #666;
+                }
+              </style>
+            </head>
+            <body>
+              <div class="loading">Loading ${filename}...</div>
+              <script>
+                fetch("${proxyUrl}", {
+                  headers: {
+                    "Authorization": "Bearer ${token}"
+                  }
+                })
+                .then(response => response.blob())
+                .then(blob => {
+                  const url = URL.createObjectURL(blob);
+                  const type = "${ext}";
+                  document.body.innerHTML = "";
+                  
+                  if (type === "pdf") {
+                    document.body.innerHTML = '<embed src="' + url + '" type="application/pdf" width="100%" height="100%" />';
+                  } else {
+                    document.body.innerHTML = '<img src="' + url + '" alt="${filename}" />';
+                  }
+                })
+                .catch(error => {
+                  document.body.innerHTML = '<div class="loading">Error loading file: ' + error.message + '</div>';
+                });
+              </script>
+            </body>
+          </html>
+        `);
+        newWindow.document.close();
+      } else if (ext === "txt") {
+        // For text files, fetch and display content
+        const response = await fetch(proxyUrl, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        const text = await response.text();
+
+        const newWindow = window.open("", "_blank");
+        newWindow.document.write(`
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <title>${filename}</title>
+              <style>
+                body {
+                  font-family: 'Courier New', monospace;
+                  padding: 20px;
+                  max-width: 800px;
+                  margin: 0 auto;
+                  background: #f5f5f5;
+                }
+                .container {
+                  background: white;
+                  padding: 30px;
+                  border-radius: 8px;
+                  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                  white-space: pre-wrap;
+                  word-wrap: break-word;
+                }
+                .header {
+                  border-bottom: 2px solid #e5e5e5;
+                  padding-bottom: 10px;
+                  margin-bottom: 20px;
+                  font-weight: bold;
+                }
+              </style>
+            </head>
+            <body>
+              <div class="container">
+                <div class="header">${filename}</div>
+                ${text}
+              </div>
+            </body>
+          </html>
+        `);
+        newWindow.document.close();
+      } else {
+        // For other formats, trigger download
+        const response = await fetch(proxyUrl, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        const blob = await response.blob();
+
+        const blobUrl = window.URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = blobUrl;
+        link.download = filename || "download";
+        document.body.appendChild(link);
+        link.click();
+
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(blobUrl);
+      }
     } catch (error) {
-      console.error("Download error:", error);
-      alert("Failed to download file");
+      console.error("View/Download error:", error);
+      alert("Failed to view/download file. Please try again.");
     }
   };
 
@@ -161,10 +279,38 @@ export default function UserList({
                           handleDownload(user._id, user.file.filename)
                         }
                         className="inline-flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                        title="Download file"
+                        title={
+                          [
+                            "jpg",
+                            "jpeg",
+                            "png",
+                            "gif",
+                            "webp",
+                            "bmp",
+                            "pdf",
+                            "txt",
+                          ].includes(
+                            user.file.filename?.split(".").pop()?.toLowerCase()
+                          )
+                            ? "View file"
+                            : "Download file"
+                        }
                       >
                         <Download className="w-4 h-4" />
-                        Download
+                        {[
+                          "jpg",
+                          "jpeg",
+                          "png",
+                          "gif",
+                          "webp",
+                          "bmp",
+                          "pdf",
+                          "txt",
+                        ].includes(
+                          user.file.filename?.split(".").pop()?.toLowerCase()
+                        )
+                          ? "View"
+                          : "Download"}
                       </button>
                     )}
                     <button

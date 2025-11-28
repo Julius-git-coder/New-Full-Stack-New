@@ -1,4 +1,4 @@
-// src/services/api.js (updated with proper download method)
+// src/services/api.js (Updated with proxy support)
 import axios from "axios";
 
 const API_URL = import.meta.env.VITE_API_URL || "/api";
@@ -59,16 +59,8 @@ export const userAPI = {
     return response.data;
   },
 
-  // Download file - returns file info with URL
-  downloadFile: async (id) => {
-    const response = await api.get(`/users/${id}/download`);
-    return response.data;
-  },
-
-  // Legacy method kept for backwards compatibility
-  getDownloadUrl: (id) => {
-    return `${API_URL}/users/${id}/download`;
-  },
+  // Note: File download is now handled directly in the component
+  // using the proxy URL: /api/users/:id/download
 };
 
 // Auth API calls (public)

@@ -1,6 +1,8 @@
-// Backend/controllers/userController.js (fixed - no double hashing)
+// Backend/controllers/userController.js (Updated with proxy download)
 import UserModel from "../models/userModel.js";
 import cloudinary from "../config/cloudinary.js";
+import https from "https";
+import http from "http";
 
 // Get all users (only owner's managed users, exclude self)
 export const getAllUsers = async (req, res) => {
@@ -293,7 +295,7 @@ export const deleteUser = async (req, res) => {
   }
 };
 
-// Download/view user's file (only if owned by req.user)
+// Download/view user's file - PROXY VERSION
 export const downloadFile = async (req, res) => {
   try {
     const user = await UserModel.findOne({
@@ -311,12 +313,34 @@ export const downloadFile = async (req, res) => {
       });
     }
 
-    // Return file info with direct URL (Cloudinary URLs are public)
-    res.status(200).json({
-      url: user.file.url,
-      filename: user.file.filename,
-      publicId: user.file.publicId,
-    });
+    // Parse the URL to determine protocol
+    const fileUrl = new URL(user.file.url);
+    const protocol = fileUrl.protocol === "https:" ? https : http;
+
+    // Proxy the file from Cloudinary
+    protocol
+      .get(user.file.url, (proxyRes) => {
+        // Set appropriate headers
+        res.setHeader(
+          "Content-Type",
+          proxyRes.headers["content-type"] || "application/octet-stream"
+        );
+        res.setHeader(
+          "Content-Disposition",
+          `inline; filename="${user.file.filename}"`
+        );
+        res.setHeader("Access-Control-Allow-Origin", "*");
+
+        // Pipe the file data
+        proxyRes.pipe(res);
+      })
+      .on("error", (error) => {
+        console.error("Error proxying file:", error);
+        res.status(500).json({
+          error: "Failed to retrieve file",
+          details: error.message,
+        });
+      });
   } catch (error) {
     console.error("Download error:", error);
     res.status(500).json({
