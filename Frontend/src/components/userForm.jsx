@@ -22,9 +22,10 @@ export default function UserForm({ onUserCreated, editingUser, onCancelEdit }) {
   });
   const [file, setFile] = useState(null);
   const [filePreview, setFilePreview] = useState(null);
-  const [fileType, setFileType] = useState(null); // Track file type
+  const [fileType, setFileType] = useState(null);
   const [dragActive, setDragActive] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [fileError, setFileError] = useState("");
 
   useEffect(() => {
     if (editingUser) {
@@ -37,10 +38,9 @@ export default function UserForm({ onUserCreated, editingUser, onCancelEdit }) {
       });
       if (editingUser.file?.url) {
         setFilePreview(editingUser.file.url);
-        // Determine file type from URL or filename
         const filename = editingUser.file.filename || "";
         const ext = filename.split(".").pop()?.toLowerCase();
-        if (["jpg", "jpeg", "png", "gif", "webp", "bmp"].includes(ext)) {
+        if (["jpg", "jpeg", "png", "gif", "webp"].includes(ext)) {
           setFileType("image");
         } else {
           setFileType("document");
@@ -85,13 +85,48 @@ export default function UserForm({ onUserCreated, editingUser, onCancelEdit }) {
     }
   };
 
+  const validateFile = (selectedFile) => {
+    const allowedImageTypes = [
+      "image/jpeg",
+      "image/jpg",
+      "image/png",
+      "image/gif",
+      "image/webp",
+    ];
+    const allowedDocTypes = ["application/pdf"];
+    const allowedTypes = [...allowedImageTypes, ...allowedDocTypes];
+
+    const ext = selectedFile.name.split(".").pop()?.toLowerCase();
+    const allowedExts = ["jpg", "jpeg", "png", "gif", "webp", "pdf"];
+
+    if (
+      !allowedTypes.includes(selectedFile.type) &&
+      !allowedExts.includes(ext)
+    ) {
+      return "Invalid file type. Only common images (JPEG, PNG, GIF, WebP) and PDF documents are allowed.";
+    }
+
+    if (selectedFile.size > 10 * 1024 * 1024) {
+      return "File size must be less than 10MB.";
+    }
+
+    return null;
+  };
+
   const handleFileSelect = (selectedFile) => {
+    setFileError("");
+
+    const error = validateFile(selectedFile);
+    if (error) {
+      setFileError(error);
+      return;
+    }
+
     setFile(selectedFile);
 
     // Determine file type
     if (selectedFile.type.startsWith("image/")) {
       setFileType("image");
-      // Create preview for images
       const reader = new FileReader();
       reader.onloadend = () => {
         setFilePreview(reader.result);
@@ -107,6 +142,7 @@ export default function UserForm({ onUserCreated, editingUser, onCancelEdit }) {
     setFile(null);
     setFilePreview(null);
     setFileType(null);
+    setFileError("");
   };
 
   const resetForm = () => {
@@ -120,6 +156,7 @@ export default function UserForm({ onUserCreated, editingUser, onCancelEdit }) {
     setFile(null);
     setFilePreview(null);
     setFileType(null);
+    setFileError("");
   };
 
   const getFileIcon = (filename) => {
@@ -127,14 +164,10 @@ export default function UserForm({ onUserCreated, editingUser, onCancelEdit }) {
 
     const ext = filename.split(".").pop()?.toLowerCase();
 
-    if (["jpg", "jpeg", "png", "gif", "webp", "bmp"].includes(ext)) {
+    if (["jpg", "jpeg", "png", "gif", "webp"].includes(ext)) {
       return "🖼️";
     } else if (ext === "pdf") {
       return "📄";
-    } else if (["doc", "docx"].includes(ext)) {
-      return "📝";
-    } else if (ext === "txt") {
-      return "📃";
     }
     return "📎";
   };
@@ -149,6 +182,11 @@ export default function UserForm({ onUserCreated, editingUser, onCancelEdit }) {
 
     if (!editingUser && !formData.password) {
       alert("Please fill in password for new user");
+      return;
+    }
+
+    if (fileError) {
+      alert("Please fix file upload errors before submitting");
       return;
     }
 
@@ -331,7 +369,7 @@ export default function UserForm({ onUserCreated, editingUser, onCancelEdit }) {
               >
                 <input
                   type="file"
-                  accept="image/*,.pdf,.doc,.docx,.txt,.rtf,.odt"
+                  accept="image/jpeg,image/jpg,image/png,image/gif,image/webp,.pdf"
                   onChange={handleChange}
                   className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                 />
@@ -344,7 +382,8 @@ export default function UserForm({ onUserCreated, editingUser, onCancelEdit }) {
                     Click to upload or drag and drop
                   </p>
                   <p className="text-xs text-gray-500">
-                    Images, PDF, DOC, DOCX, TXT, RTF, ODT (max. 10MB)
+                    Images: JPEG, PNG, GIF, WebP • Documents: PDF only (max.
+                    10MB)
                   </p>
                 </div>
               </div>
@@ -385,6 +424,10 @@ export default function UserForm({ onUserCreated, editingUser, onCancelEdit }) {
                   </button>
                 </div>
               </div>
+            )}
+
+            {fileError && (
+              <p className="text-sm text-red-600 mt-2">⚠️ {fileError}</p>
             )}
           </div>
         </div>
