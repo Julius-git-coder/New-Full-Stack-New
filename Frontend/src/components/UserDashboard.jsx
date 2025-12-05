@@ -10,18 +10,28 @@ export default function UserDashboard() {
 
   useEffect(() => {
     loadPosts();
+
+    // Refresh posts every 5 seconds for real-time updates
+    const interval = setInterval(() => {
+      loadPosts(true); // Silent refresh
+    }, 5000);
+
+    return () => clearInterval(interval);
   }, []);
 
-  const loadPosts = async () => {
-    setLoading(true);
+  const loadPosts = async (silent = false) => {
+    if (!silent) setLoading(true);
+
     try {
       const data = await postAPI.getAllPosts();
       setPosts(data);
     } catch (error) {
       console.error("Error loading posts:", error);
-      alert("Failed to load posts");
+      if (!silent) {
+        alert("Failed to load posts");
+      }
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
@@ -44,9 +54,8 @@ export default function UserDashboard() {
     setSelectedPost(null);
   };
 
-  const handleDownloadFile = async (postId, filename) => {
+  const handleDownloadFile = async (postId) => {
     try {
-      // Open the file in a new tab using the backend proxy endpoint
       window.open(`/api/posts/${postId}/download`, "_blank");
     } catch (error) {
       console.error("Download error:", error);
@@ -71,6 +80,9 @@ export default function UserDashboard() {
           </h1>
           <p className="text-gray-600">
             View all published posts and announcements
+          </p>
+          <p className="text-xs text-gray-500 mt-2">
+            ✨ Updates automatically every 5 seconds
           </p>
         </div>
 
@@ -144,9 +156,7 @@ export default function UserDashboard() {
 
                     {post.file && (
                       <button
-                        onClick={() =>
-                          handleDownloadFile(post._id, post.file.filename)
-                        }
+                        onClick={() => handleDownloadFile(post._id)}
                         className="inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
                       >
                         <Download className="w-4 h-4" />
@@ -210,12 +220,7 @@ export default function UserDashboard() {
                       </div>
 
                       <button
-                        onClick={() =>
-                          handleDownloadFile(
-                            selectedPost._id,
-                            selectedPost.file.filename
-                          )
-                        }
+                        onClick={() => handleDownloadFile(selectedPost._id)}
                         className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
                       >
                         <Download className="w-4 h-4" />

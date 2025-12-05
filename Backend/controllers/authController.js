@@ -1,18 +1,12 @@
-// Backend/controllers/authController.js (fixed - no double hashing)
+// Backend/controllers/authController.js
 import UserModel from "../models/userModel.js";
 import jwt from "jsonwebtoken";
 import cloudinary from "../config/cloudinary.js";
 
-// Signup (first save without ownerId, then update)
+// Signup
 export const signup = async (req, res) => {
   try {
-    console.log("Signup request received:", {
-      name: req.body.name,
-      email: req.body.email,
-      hasFile: !!req.file,
-    });
-
-    const { name, email, password, phone, address } = req.body;
+    const { name, email, password, phone, address, role } = req.body;
 
     if (!name || !email || !password) {
       return res
@@ -28,17 +22,15 @@ export const signup = async (req, res) => {
     const newUser = new UserModel({
       name,
       email,
-      password, // Will be hashed by pre-save hook - DO NOT hash manually
+      password,
       phone: phone || "",
       address: address || "",
-      // ownerId set after first save
+      role: role || "user", // Default to 'user' if not specified
     });
 
-    // Optional file upload to Cloudinary
+    // Optional file upload
     if (req.file) {
       try {
-        console.log("Uploading file to Cloudinary:", req.file.originalname);
-
         const uploadResult = await new Promise((resolve, reject) => {
           const uploadStream = cloudinary.uploader.upload_stream(
             {
@@ -48,12 +40,8 @@ export const signup = async (req, res) => {
               unique_filename: true,
             },
             (error, result) => {
-              if (error) {
-                console.error("Cloudinary upload error:", error);
-                reject(error);
-              } else {
-                resolve(result);
-              }
+              if (error) reject(error);
+              else resolve(result);
             }
           );
           uploadStream.end(req.file.buffer);
@@ -64,20 +52,15 @@ export const signup = async (req, res) => {
           publicId: uploadResult.public_id,
           filename: req.file.originalname,
         };
-        console.log("File uploaded to Cloudinary:", uploadResult.secure_url);
       } catch (uploadError) {
-        console.error("Cloudinary upload failed:", uploadError);
-        return res
-          .status(400)
-          .json({ error: "File upload failed", details: uploadError.message });
+        return res.status(400).json({
+          error: "File upload failed",
+          details: uploadError.message,
+        });
       }
     }
 
     await newUser.save();
-    newUser.ownerId = newUser._id; // Self-owned
-    await newUser.save(); // Update ownerId
-
-    console.log("User created successfully:", newUser._id);
 
     const token = jwt.sign({ id: newUser._id }, process.env.JWT_SECRET, {
       expiresIn: "7d",
@@ -89,6 +72,7 @@ export const signup = async (req, res) => {
         id: newUser._id,
         name: newUser.name,
         email: newUser.email,
+        role: newUser.role,
         phone: newUser.phone,
         address: newUser.address,
         hasFile: !!newUser.file,
@@ -103,11 +87,9 @@ export const signup = async (req, res) => {
   }
 };
 
-// Login (unchanged)
+// Login
 export const login = async (req, res) => {
   try {
-    console.log("Login request received:", { email: req.body.email });
-
     const { email, password } = req.body;
 
     if (!email || !password) {
@@ -128,14 +110,13 @@ export const login = async (req, res) => {
       expiresIn: "7d",
     });
 
-    console.log("Login successful:", user._id);
-
     res.status(200).json({
       token,
       user: {
         id: user._id,
         name: user.name,
         email: user.email,
+        role: user.role,
         phone: user.phone,
         address: user.address,
         hasFile: !!user.file,

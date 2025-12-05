@@ -1,14 +1,15 @@
-// src/components/Signup.jsx
+// Frontend/src/components/Signup.jsx
 import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { Link, useNavigate } from "react-router-dom";
-import { Mail, Lock, User } from "lucide-react";
+import { Mail, Lock, User, Shield } from "lucide-react";
 
 export default function Signup() {
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     password: "",
+    role: "user", // Default to user
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -29,10 +30,11 @@ export default function Signup() {
     submitData.append("name", formData.name);
     submitData.append("email", formData.email);
     submitData.append("password", formData.password);
+    submitData.append("role", formData.role);
 
     const result = await signup(submitData);
     if (result.success) {
-      navigate("/");
+      navigate("/dashboard");
     } else {
       setError(result.error);
     }
@@ -56,11 +58,13 @@ export default function Signup() {
             </Link>
           </p>
         </div>
+
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-md text-sm">
             {error}
           </div>
         )}
+
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           <div>
             <label
@@ -85,6 +89,7 @@ export default function Signup() {
               />
             </div>
           </div>
+
           <div>
             <label
               htmlFor="email"
@@ -108,6 +113,7 @@ export default function Signup() {
               />
             </div>
           </div>
+
           <div>
             <label
               htmlFor="password"
@@ -131,6 +137,35 @@ export default function Signup() {
               />
             </div>
           </div>
+
+          <div>
+            <label
+              htmlFor="role"
+              className="block text-sm font-medium text-gray-700 mb-2"
+            >
+              Account Type
+            </label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Shield className="h-5 w-5 text-gray-400" />
+              </div>
+              <select
+                id="role"
+                name="role"
+                value={formData.role}
+                onChange={handleInputChange}
+                className="appearance-none rounded-md relative block w-full px-3 py-2 pl-10 border border-gray-300 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+              >
+                <option value="user">User - View Posts</option>
+                <option value="admin">Admin - Manage Posts</option>
+              </select>
+            </div>
+            <p className="mt-1 text-xs text-gray-500">
+              Select "Admin" to create and manage posts, or "User" to view posts
+              only
+            </p>
+          </div>
+
           <div>
             <button
               type="submit"
