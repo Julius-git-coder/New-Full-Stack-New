@@ -191,29 +191,11 @@ function AppContent() {
         }
       />
 
-      {/* Default Route - Redirect to login for first-time visitors */}
-      <Route
-        path="/"
-        element={
-          user ? (
-            <Navigate to="/dashboard" replace />
-          ) : (
-            <Navigate to="/login" replace />
-          )
-        }
-      />
+      {/* Default Route - Always redirect to login first */}
+      <Route path="/" element={<Navigate to="/login" replace />} />
 
-      {/* Catch all - redirect based on auth status */}
-      <Route
-        path="*"
-        element={
-          user ? (
-            <Navigate to="/dashboard" replace />
-          ) : (
-            <Navigate to="/login" replace />
-          )
-        }
-      />
+      {/* Catch all - redirect to login */}
+      <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
   );
 }

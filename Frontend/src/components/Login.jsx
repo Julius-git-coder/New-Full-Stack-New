@@ -1,19 +1,28 @@
-// src/components/Login.jsx
-import { useState } from "react";
+// Frontend/src/components/Login.jsx
+import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { Link, useNavigate } from "react-router-dom";
-import { Mail, Lock, User } from "lucide-react";
+import { Mail, Lock } from "lucide-react";
 
 export default function Login() {
   const [formData, setFormData] = useState({ email: "", password: "" });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const { login } = useAuth();
+  const { login, user } = useAuth();
   const navigate = useNavigate();
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (user) {
+      navigate("/dashboard", { replace: true });
+    }
+  }, [user, navigate]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+    // Clear error when user types
+    if (error) setError("");
   };
 
   const handleSubmit = async (e) => {
@@ -23,7 +32,7 @@ export default function Login() {
 
     const result = await login(formData.email, formData.password);
     if (result.success) {
-      navigate("/");
+      navigate("/dashboard", { replace: true });
     } else {
       setError(result.error);
     }

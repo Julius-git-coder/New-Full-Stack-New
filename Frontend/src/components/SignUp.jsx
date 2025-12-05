@@ -1,5 +1,5 @@
 // Frontend/src/components/Signup.jsx
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { Link, useNavigate } from "react-router-dom";
 import { Mail, Lock, User, Shield } from "lucide-react";
@@ -13,12 +13,21 @@ export default function Signup() {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const { signup } = useAuth();
+  const { signup, user } = useAuth();
   const navigate = useNavigate();
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (user) {
+      navigate("/dashboard", { replace: true });
+    }
+  }, [user, navigate]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+    // Clear error when user types
+    if (error) setError("");
   };
 
   const handleSubmit = async (e) => {
@@ -34,7 +43,7 @@ export default function Signup() {
 
     const result = await signup(submitData);
     if (result.success) {
-      navigate("/dashboard");
+      navigate("/dashboard", { replace: true });
     } else {
       setError(result.error);
     }
