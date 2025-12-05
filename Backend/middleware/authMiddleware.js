@@ -1,8 +1,9 @@
-// backend/middleware/authMiddleware.js (new)
+// Backend/middleware/authMiddleware.js
 import jwt from "jsonwebtoken";
 import UserModel from "../models/userModel.js";
 
-const verifyToken = async (req, res, next) => {
+// Verify token middleware
+export const verifyToken = async (req, res, next) => {
   try {
     const token = req.header("Authorization")?.replace("Bearer ", "");
 
@@ -14,15 +15,38 @@ const verifyToken = async (req, res, next) => {
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const user = await UserModel.findById(decoded.id).select("-password");
+
     if (!user) {
-      return res.status(401).json({ error: "Invalid token." });
+      return res.status(401).json({ error: "Invalid token. User not found." });
     }
 
     req.user = user;
     next();
   } catch (error) {
-    res.status(401).json({ error: "Invalid token." });
+    console.error("Token verification error:", error);
+    return res.status(401).json({ error: "Invalid or expired token." });
   }
 };
 
+// Verify admin role middleware
+export const verifyAdmin = async (req, res, next) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: "Authentication required." });
+    }
+
+    if (req.user.role !== "admin") {
+      return res.status(403).json({
+        error: "Access denied. Admin privileges required.",
+      });
+    }
+
+    next();
+  } catch (error) {
+    console.error("Admin verification error:", error);
+    return res.status(403).json({ error: "Access denied." });
+  }
+};
+
+// Default export for backward compatibility
 export default verifyToken;

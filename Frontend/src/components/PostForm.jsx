@@ -1,5 +1,6 @@
+// Frontend/src/components/PostForm.jsx
 import { useState, useEffect } from "react";
-import { Upload, X, FileText, Image } from "lucide-react";
+import { Upload, X, Image } from "lucide-react";
 import { postAPI } from "../services/postApi";
 
 export default function PostForm({ onPostCreated, editingPost, onCancelEdit }) {
@@ -12,6 +13,7 @@ export default function PostForm({ onPostCreated, editingPost, onCancelEdit }) {
   const [fileType, setFileType] = useState(null);
   const [dragActive, setDragActive] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     if (editingPost) {
@@ -40,6 +42,8 @@ export default function PostForm({ onPostCreated, editingPost, onCancelEdit }) {
       ...prev,
       [name]: value,
     }));
+    // Clear error when user starts typing
+    if (error) setError("");
   };
 
   const handleDrag = (e) => {
@@ -98,6 +102,7 @@ export default function PostForm({ onPostCreated, editingPost, onCancelEdit }) {
     setFile(null);
     setFilePreview(null);
     setFileType(null);
+    setError("");
   };
 
   const getFileIcon = (filename) => {
@@ -110,9 +115,25 @@ export default function PostForm({ onPostCreated, editingPost, onCancelEdit }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError("");
 
-    if (!formData.title || !formData.content) {
-      alert("Please fill in title and content");
+    // Trim values
+    const trimmedTitle = formData.title?.trim() || "";
+    const trimmedContent = formData.content?.trim() || "";
+
+    // Validation
+    if (!trimmedTitle || !trimmedContent) {
+      setError("Please fill in both title and content");
+      return;
+    }
+
+    if (trimmedTitle.length < 3) {
+      setError("Title must be at least 3 characters long");
+      return;
+    }
+
+    if (trimmedContent.length < 10) {
+      setError("Content must be at least 10 characters long");
       return;
     }
 
@@ -120,8 +141,8 @@ export default function PostForm({ onPostCreated, editingPost, onCancelEdit }) {
 
     try {
       const submitData = new FormData();
-      submitData.append("title", formData.title);
-      submitData.append("content", formData.content);
+      submitData.append("title", trimmedTitle);
+      submitData.append("content", trimmedContent);
 
       if (file) {
         submitData.append("file", file);
@@ -139,7 +160,12 @@ export default function PostForm({ onPostCreated, editingPost, onCancelEdit }) {
       onPostCreated();
     } catch (error) {
       console.error("Error submitting form:", error);
-      alert(error.response?.data?.error || "Failed to submit form");
+      const errorMessage =
+        error.response?.data?.error ||
+        error.response?.data?.details ||
+        "Failed to submit post. Please try again.";
+      setError(errorMessage);
+      alert(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -158,7 +184,13 @@ export default function PostForm({ onPostCreated, editingPost, onCancelEdit }) {
         </p>
       </div>
 
-      <div className="px-8 py-8">
+      <form onSubmit={handleSubmit} className="px-8 py-8">
+        {error && (
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-md">
+            <p className="text-sm text-red-600">{error}</p>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 gap-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -172,6 +204,7 @@ export default function PostForm({ onPostCreated, editingPost, onCancelEdit }) {
               placeholder="Enter post title"
               className="block w-full px-3 py-2.5 border border-gray-300 rounded-md text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               required
+              minLength={3}
             />
           </div>
 
@@ -187,6 +220,7 @@ export default function PostForm({ onPostCreated, editingPost, onCancelEdit }) {
               rows="6"
               className="block w-full px-3 py-2.5 border border-gray-300 rounded-md text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
               required
+              minLength={10}
             />
           </div>
 
@@ -271,15 +305,18 @@ export default function PostForm({ onPostCreated, editingPost, onCancelEdit }) {
           {editingPost && (
             <button
               type="button"
-              onClick={onCancelEdit}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              onClick={() => {
+                resetForm();
+                onCancelEdit();
+              }}
+              disabled={loading}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
             >
               Cancel
             </button>
           )}
           <button
-            type="button"
-            onClick={handleSubmit}
+            type="submit"
             disabled={loading}
             className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
           >
@@ -290,7 +327,7 @@ export default function PostForm({ onPostCreated, editingPost, onCancelEdit }) {
               : "Create Post"}
           </button>
         </div>
-      </div>
+      </form>
     </div>
   );
 }

@@ -1,5 +1,5 @@
 // Backend/controllers/postController.js
-import PostModel from "../models/postModels.js"; // Changed from postModel.js to postModels.js
+import PostModel from "../models/postModels.js";
 import cloudinary from "../config/cloudinary.js";
 import https from "https";
 import http from "http";
@@ -46,6 +46,12 @@ export const getPostById = async (req, res) => {
 export const createPost = async (req, res) => {
   try {
     const { title, content } = req.body;
+
+    console.log("Create post request:", {
+      title,
+      content,
+      hasFile: !!req.file,
+    });
 
     if (!title || !content) {
       return res.status(400).json({
@@ -101,6 +107,8 @@ export const createPost = async (req, res) => {
     }
 
     const post = await PostModel.create(newPost);
+
+    console.log("Post created successfully:", post._id);
 
     res.status(201).json({
       message: "Post created successfully",

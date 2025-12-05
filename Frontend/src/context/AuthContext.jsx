@@ -1,6 +1,6 @@
-// src/context/AuthContext.jsx (corrected)
+// Frontend/src/context/AuthContext.jsx
 import { createContext, useContext, useState, useEffect } from "react";
-import { authAPI } from "../services/api"; // Corrected to authAPI
+import { authAPI } from "../services/api";
 
 const AuthContext = createContext();
 
@@ -17,44 +17,69 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (token) {
-      // Optionally verify token here by calling a protected endpoint
-      setUser({ token }); // Simple: just set if token exists
-    }
-    setLoading(false);
+    // Check for existing token on mount
+    const initAuth = () => {
+      const token = localStorage.getItem("token");
+      const userData = localStorage.getItem("user");
+
+      if (token && userData) {
+        try {
+          const parsedUser = JSON.parse(userData);
+          setUser({ token, user: parsedUser });
+        } catch (error) {
+          console.error("Error parsing user data:", error);
+          localStorage.removeItem("token");
+          localStorage.removeItem("user");
+        }
+      }
+      setLoading(false);
+    };
+
+    initAuth();
   }, []);
 
   const login = async (email, password) => {
     try {
-      const data = await authAPI.login({ email, password }); // Corrected to authAPI
+      const data = await authAPI.login({ email, password });
+
+      // Store token and user data
       localStorage.setItem("token", data.token);
+      localStorage.setItem("user", JSON.stringify(data.user));
+
       setUser({ token: data.token, user: data.user });
       return { success: true };
     } catch (error) {
+      console.error("Login error:", error);
       return {
         success: false,
-        error: error.response?.data?.error || "Login failed",
+        error: error.response?.data?.error || "Login failed. Please try again.",
       };
     }
   };
 
   const signup = async (formData) => {
     try {
-      const data = await authAPI.signup(formData); // Corrected to authAPI
+      const data = await authAPI.signup(formData);
+
+      // Store token and user data
       localStorage.setItem("token", data.token);
+      localStorage.setItem("user", JSON.stringify(data.user));
+
       setUser({ token: data.token, user: data.user });
       return { success: true };
     } catch (error) {
+      console.error("Signup error:", error);
       return {
         success: false,
-        error: error.response?.data?.error || "Signup failed",
+        error:
+          error.response?.data?.error || "Signup failed. Please try again.",
       };
     }
   };
 
   const logout = () => {
     localStorage.removeItem("token");
+    localStorage.removeItem("user");
     setUser(null);
   };
 

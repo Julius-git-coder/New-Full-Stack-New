@@ -9,22 +9,18 @@ import {
   downloadPostFile,
 } from "../controllers/postController.js";
 import upload from "../middleware/uploadMiddleware.js";
-import verifyToken from "../middleware/authMiddleware.js";
+import verifyToken, { verifyAdmin } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-// Public route - Get all published posts
+// Public routes - Anyone can view posts
 router.get("/", getAllPosts);
-
-// Public route - Get single post
 router.get("/:id", getPostById);
-
-// Download/view post file (public for now, can be protected)
 router.get("/:id/download", downloadPostFile);
 
-// Protected routes (require authentication)
-router.post("/", verifyToken, upload.single("file"), createPost);
-router.put("/:id", verifyToken, upload.single("file"), updatePost);
-router.delete("/:id", verifyToken, deletePost);
+// Protected routes - Only authenticated admins can manage posts
+router.post("/", verifyToken, verifyAdmin, upload.single("file"), createPost);
+router.put("/:id", verifyToken, verifyAdmin, upload.single("file"), updatePost);
+router.delete("/:id", verifyToken, verifyAdmin, deletePost);
 
 export default router;
