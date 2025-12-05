@@ -65,6 +65,11 @@
 //   console.log(`404 for ${req.method} ${req.url}`);
 //   res.status(404).json({ error: `Cannot ${req.method} ${req.url}` });
 // });
+
+
+
+
+
 import express from "express";
 import mongoose from "mongoose";
 import dotenv from "dotenv";
@@ -73,6 +78,7 @@ import helmet from "helmet";
 import authRoutes from "./routes/authRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
 import { v2 as cloudinary } from "cloudinary";
+import postRoutes from "./routes/postRoutes.js";
 
 dotenv.config();
 
@@ -119,8 +125,13 @@ console.log("Body parsers applied");
 app.use("/api/auth", authRoutes);
 console.log("Auth routes mounted at /api/auth");
 
-app.use("/api", userRoutes);
-console.log("User routes mounted at /api");
+// userRoutes
+app.use("/api/users", userRoutes);
+console.log("User routes mounted at /api/users");
+
+// postRoutes
+app.use("/api/posts", postRoutes);
+console.log("Post routes mounted at /api/posts");
 
 // Root
 app.get("/", (req, res) => {
