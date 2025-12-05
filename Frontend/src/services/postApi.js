@@ -3,7 +3,7 @@ import axios from "axios";
 
 const API_URL = import.meta.env.VITE_API_URL || "/api";
 
-const postApi = axios.create({
+const api = axios.create({
   baseURL: API_URL,
   headers: {
     "Content-Type": "application/json",
@@ -11,7 +11,7 @@ const postApi = axios.create({
 });
 
 // Add token to requests
-postApi.interceptors.request.use((config) => {
+api.interceptors.request.use((config) => {
   const token = localStorage.getItem("token");
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
@@ -59,4 +59,4 @@ export const postAPI = {
   },
 };
 
-export default postApi;
+export default api;

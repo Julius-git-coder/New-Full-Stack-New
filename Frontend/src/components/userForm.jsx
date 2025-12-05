@@ -1,11 +1,14 @@
 import { useState, useEffect } from "react";
-import { Upload, X, FileText, Image } from "lucide-react";
-import { postAPI } from "../services/postApi";
+import { Upload, X, Image } from "lucide-react";
+import { userAPI } from "../services/api";
 
-export default function PostForm({ onPostCreated, editingPost, onCancelEdit }) {
+export default function UserForm({ onUserCreated, editingUser, onCancelEdit }) {
   const [formData, setFormData] = useState({
-    title: "",
-    content: "",
+    name: "",
+    email: "",
+    password: "",
+    phone: "",
+    address: "",
   });
   const [file, setFile] = useState(null);
   const [filePreview, setFilePreview] = useState(null);
@@ -14,14 +17,17 @@ export default function PostForm({ onPostCreated, editingPost, onCancelEdit }) {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (editingPost) {
+    if (editingUser) {
       setFormData({
-        title: editingPost.title || "",
-        content: editingPost.content || "",
+        name: editingUser.name || "",
+        email: editingUser.email || "",
+        password: "", // Never pre-fill password
+        phone: editingUser.phone || "",
+        address: editingUser.address || "",
       });
-      if (editingPost.file?.url) {
-        setFilePreview(editingPost.file.url);
-        const filename = editingPost.file.filename || "";
+      if (editingUser.file?.url) {
+        setFilePreview(editingUser.file.url);
+        const filename = editingUser.file.filename || "";
         const ext = filename.split(".").pop()?.toLowerCase();
         if (["jpg", "jpeg", "png", "gif", "webp"].includes(ext)) {
           setFileType("image");
@@ -32,7 +38,7 @@ export default function PostForm({ onPostCreated, editingPost, onCancelEdit }) {
     } else {
       resetForm();
     }
-  }, [editingPost]);
+  }, [editingUser]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -92,8 +98,11 @@ export default function PostForm({ onPostCreated, editingPost, onCancelEdit }) {
 
   const resetForm = () => {
     setFormData({
-      title: "",
-      content: "",
+      name: "",
+      email: "",
+      password: "",
+      phone: "",
+      address: "",
     });
     setFile(null);
     setFilePreview(null);
@@ -111,8 +120,13 @@ export default function PostForm({ onPostCreated, editingPost, onCancelEdit }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!formData.title || !formData.content) {
-      alert("Please fill in title and content");
+    if (!formData.name || !formData.email) {
+      alert("Please fill in name and email");
+      return;
+    }
+
+    if (!editingUser && !formData.password) {
+      alert("Password is required for new users");
       return;
     }
 
@@ -120,23 +134,28 @@ export default function PostForm({ onPostCreated, editingPost, onCancelEdit }) {
 
     try {
       const submitData = new FormData();
-      submitData.append("title", formData.title);
-      submitData.append("content", formData.content);
+      submitData.append("name", formData.name);
+      submitData.append("email", formData.email);
+      if (formData.password) {
+        submitData.append("password", formData.password);
+      }
+      submitData.append("phone", formData.phone);
+      submitData.append("address", formData.address);
 
       if (file) {
         submitData.append("file", file);
       }
 
-      if (editingPost) {
-        await postAPI.updatePost(editingPost._id, submitData);
-        alert("Post updated successfully!");
+      if (editingUser) {
+        await userAPI.updateUser(editingUser._id, submitData);
+        alert("User updated successfully!");
       } else {
-        await postAPI.createPost(submitData);
-        alert("Post created successfully!");
+        await userAPI.createUser(submitData);
+        alert("User created successfully!");
       }
 
       resetForm();
-      onPostCreated();
+      onUserCreated();
     } catch (error) {
       console.error("Error submitting form:", error);
       alert(error.response?.data?.error || "Failed to submit form");
@@ -149,27 +168,27 @@ export default function PostForm({ onPostCreated, editingPost, onCancelEdit }) {
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
       <div className="bg-white border-b border-gray-200 px-8 py-6">
         <h2 className="text-2xl font-semibold text-gray-900">
-          {editingPost ? "Edit Post" : "Create New Post"}
+          {editingUser ? "Edit User" : "Create New User"}
         </h2>
         <p className="text-sm text-gray-600 mt-1">
-          {editingPost
-            ? "Update post information below"
-            : "Share announcements with users"}
+          {editingUser
+            ? "Update user information below"
+            : "Fill in the details to create a new user"}
         </p>
       </div>
 
-      <div className="px-8 py-8">
+      <form onSubmit={handleSubmit} className="px-8 py-8">
         <div className="grid grid-cols-1 gap-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Title <span className="text-red-500">*</span>
+              Name <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
-              name="title"
-              value={formData.title}
+              name="name"
+              value={formData.name}
               onChange={handleInputChange}
-              placeholder="Enter post title"
+              placeholder="Enter full name"
               className="block w-full px-3 py-2.5 border border-gray-300 rounded-md text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               required
             />
@@ -177,22 +196,72 @@ export default function PostForm({ onPostCreated, editingPost, onCancelEdit }) {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Content <span className="text-red-500">*</span>
+              Email <span className="text-red-500">*</span>
             </label>
-            <textarea
-              name="content"
-              value={formData.content}
+            <input
+              type="email"
+              name="email"
+              value={formData.email}
               onChange={handleInputChange}
-              placeholder="Enter post content"
-              rows="6"
-              className="block w-full px-3 py-2.5 border border-gray-300 rounded-md text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+              placeholder="user@example.com"
+              className="block w-full px-3 py-2.5 border border-gray-300 rounded-md text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               required
             />
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Attachment (Optional)
+              Password {!editingUser && <span className="text-red-500">*</span>}
+              {editingUser && (
+                <span className="text-gray-500 text-xs">
+                  (Leave blank to keep current)
+                </span>
+              )}
+            </label>
+            <input
+              type="password"
+              name="password"
+              value={formData.password}
+              onChange={handleInputChange}
+              placeholder={
+                editingUser ? "Enter new password (optional)" : "Enter password"
+              }
+              className="block w-full px-3 py-2.5 border border-gray-300 rounded-md text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              required={!editingUser}
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Phone
+            </label>
+            <input
+              type="tel"
+              name="phone"
+              value={formData.phone}
+              onChange={handleInputChange}
+              placeholder="+1 (555) 123-4567"
+              className="block w-full px-3 py-2.5 border border-gray-300 rounded-md text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Address
+            </label>
+            <textarea
+              name="address"
+              value={formData.address}
+              onChange={handleInputChange}
+              placeholder="123 Main St, City, State, ZIP"
+              rows="3"
+              className="block w-full px-3 py-2.5 border border-gray-300 rounded-md text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Profile Picture / Document (Optional)
             </label>
 
             {!filePreview && !file ? (
@@ -238,14 +307,14 @@ export default function PostForm({ onPostCreated, editingPost, onCancelEdit }) {
                   ) : (
                     <div className="w-20 h-20 flex items-center justify-center bg-gray-200 rounded-md">
                       <span className="text-3xl">
-                        {getFileIcon(file?.name || editingPost?.file?.filename)}
+                        {getFileIcon(file?.name || editingUser?.file?.filename)}
                       </span>
                     </div>
                   )}
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-gray-900 truncate">
                       {file?.name ||
-                        editingPost?.file?.filename ||
+                        editingUser?.file?.filename ||
                         "Existing file"}
                     </p>
                     {file && (
@@ -268,7 +337,7 @@ export default function PostForm({ onPostCreated, editingPost, onCancelEdit }) {
         </div>
 
         <div className="mt-8 flex items-center justify-end gap-3">
-          {editingPost && (
+          {editingUser && (
             <button
               type="button"
               onClick={onCancelEdit}
@@ -278,19 +347,18 @@ export default function PostForm({ onPostCreated, editingPost, onCancelEdit }) {
             </button>
           )}
           <button
-            type="button"
-            onClick={handleSubmit}
+            type="submit"
             disabled={loading}
             className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading
               ? "Submitting..."
-              : editingPost
-              ? "Update Post"
-              : "Create Post"}
+              : editingUser
+              ? "Update User"
+              : "Create User"}
           </button>
         </div>
-      </div>
+      </form>
     </div>
   );
 }

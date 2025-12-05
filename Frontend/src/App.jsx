@@ -12,6 +12,7 @@ import Signup from "./components/Signup";
 import UserForm from "./components/userForm";
 import UserList from "./components/UserList";
 import UserDashboard from "./components/UserDashboard";
+import AdminDashboard from "./components/AdminDashboard";
 import PostForm from "./components/PostForm";
 import PostList from "./components/PostList";
 import { postAPI } from "./services/postApi";
@@ -20,7 +21,12 @@ import { ProtectedRoute } from "./components/ProtectedRoute";
 import { LogOut, Users, FileText, LayoutDashboard } from "lucide-react";
 
 function Navbar() {
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
+
+  // Check if user is admin (owner of themselves)
+  const isAdmin =
+    user?.user?.id === user?.user?.ownerId ||
+    user?.user?._id === user?.user?.ownerId;
 
   return (
     <nav className="bg-white shadow-sm border-b border-gray-200">
@@ -34,21 +40,25 @@ function Navbar() {
             Dashboard
           </Link>
 
-          <Link
-            to="/"
-            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-md"
-          >
-            <Users className="w-4 h-4" />
-            Users
-          </Link>
+          {isAdmin && (
+            <>
+              <Link
+                to="/admin/users"
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-md"
+              >
+                <Users className="w-4 h-4" />
+                Manage Users
+              </Link>
 
-          <Link
-            to="/admin/posts"
-            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-md"
-          >
-            <FileText className="w-4 h-4" />
-            Manage Posts
-          </Link>
+              <Link
+                to="/admin/posts"
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-md"
+              >
+                <FileText className="w-4 h-4" />
+                Manage Posts
+              </Link>
+            </>
+          )}
         </div>
 
         <button
@@ -75,13 +85,18 @@ function AppContent() {
   const [editingUser, setEditingUser] = useState(null);
   const [editingPost, setEditingPost] = useState(null);
 
-  // Load Users + Posts when authenticated
+  // Check if user is admin
+  const isAdmin =
+    user?.user?.id === user?.user?.ownerId ||
+    user?.user?._id === user?.user?.ownerId;
+
+  // Load Users + Posts when authenticated and admin
   useEffect(() => {
-    if (user) {
+    if (user && isAdmin) {
       loadUsers();
       loadPosts();
     }
-  }, [user]);
+  }, [user, isAdmin]);
 
   const loadUsers = async () => {
     setLoadingUsers(true);
@@ -139,85 +154,103 @@ function AppContent() {
   return (
     <Routes>
       {/* Public Routes */}
-      <Route path="/login" element={!user ? <Login /> : <Navigate to="/" />} />
+      <Route
+        path="/login"
+        element={!user ? <Login /> : <Navigate to="/dashboard" />}
+      />
       <Route
         path="/signup"
-        element={!user ? <Signup /> : <Navigate to="/" />}
+        element={!user ? <Signup /> : <Navigate to="/dashboard" />}
       />
 
-      {/* Dashboard */}
+      {/* Dashboard - Different for Admin vs User */}
       <Route
         path="/dashboard"
         element={
           <ProtectedRoute>
             <Navbar />
-            <UserDashboard />
+            {isAdmin ? <AdminDashboard /> : <UserDashboard />}
           </ProtectedRoute>
         }
       />
 
-      {/* Admin Posts */}
+      {/* Admin Only - Manage Posts */}
       <Route
         path="/admin/posts"
         element={
           <ProtectedRoute>
-            <Navbar />
-            <div className="container mx-auto px-4 py-8">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <PostForm
-                  editingPost={editingPost}
-                  onPostCreated={handlePostCreated}
-                  onCancelEdit={() => setEditingPost(null)}
-                />
+            {isAdmin ? (
+              <>
+                <Navbar />
+                <div className="container mx-auto px-4 py-8">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <PostForm
+                      editingPost={editingPost}
+                      onPostCreated={handlePostCreated}
+                      onCancelEdit={() => setEditingPost(null)}
+                    />
 
-                <PostList
-                  posts={posts}
-                  loading={loadingPosts}
-                  onEdit={setEditingPost}
-                  onDelete={handleDeletePost}
-                  onRefresh={loadPosts}
-                />
-              </div>
-            </div>
+                    <PostList
+                      posts={posts}
+                      loading={loadingPosts}
+                      onEdit={setEditingPost}
+                      onDelete={handleDeletePost}
+                      onRefresh={loadPosts}
+                    />
+                  </div>
+                </div>
+              </>
+            ) : (
+              <Navigate to="/dashboard" />
+            )}
           </ProtectedRoute>
         }
       />
 
-      {/* User Management */}
+      {/* Admin Only - Manage Users */}
       <Route
-        path="/"
+        path="/admin/users"
         element={
           <ProtectedRoute>
-            <Navbar />
-            <div className="container mx-auto px-4 py-8">
-              <div className="mb-8 text-center">
-                <h1 className="text-4xl font-bold text-gray-900 mb-2">
-                  User Management System
-                </h1>
-                <p className="text-gray-600">
-                  Create, manage, and organize user profiles
-                </p>
-              </div>
+            {isAdmin ? (
+              <>
+                <Navbar />
+                <div className="container mx-auto px-4 py-8">
+                  <div className="mb-8 text-center">
+                    <h1 className="text-4xl font-bold text-gray-900 mb-2">
+                      User Management System
+                    </h1>
+                    <p className="text-gray-600">
+                      Create, manage, and organize user profiles
+                    </p>
+                  </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <UserForm
-                  editingUser={editingUser}
-                  onUserCreated={handleUserCreated}
-                  onCancelEdit={() => setEditingUser(null)}
-                />
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <UserForm
+                      editingUser={editingUser}
+                      onUserCreated={handleUserCreated}
+                      onCancelEdit={() => setEditingUser(null)}
+                    />
 
-                <UserList
-                  users={users}
-                  loading={loadingUsers}
-                  onEdit={setEditingUser}
-                  onDelete={handleDeleteUser}
-                  onRefresh={loadUsers}
-                />
-              </div>
-            </div>
+                    <UserList
+                      users={users}
+                      loading={loadingUsers}
+                      onEdit={setEditingUser}
+                      onDelete={handleDeleteUser}
+                      onRefresh={loadUsers}
+                    />
+                  </div>
+                </div>
+              </>
+            ) : (
+              <Navigate to="/dashboard" />
+            )}
           </ProtectedRoute>
         }
       />
+
+      {/* Default Route */}
+      <Route path="/" element={<Navigate to="/dashboard" />} />
     </Routes>
   );
 }

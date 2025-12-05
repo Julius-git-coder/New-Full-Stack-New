@@ -1,45 +1,6 @@
 import { useState, useEffect } from "react";
 import { Calendar, User, FileText, Download, Eye, X } from "lucide-react";
-
-// Mock API service
-const postAPI = {
-  getAllPosts: async () => {
-    // Simulate API call with mock data
-    return [
-      {
-        _id: "1",
-        title: "Welcome to Our Platform",
-        content:
-          "This is a sample post demonstrating the dashboard functionality. You can view posts, download attachments, and more!",
-        authorName: "John Doe",
-        createdAt: "2024-12-01T10:00:00Z",
-        file: {
-          filename: "welcome-guide.pdf",
-        },
-      },
-      {
-        _id: "2",
-        title: "Important Announcement",
-        content:
-          "We're excited to announce new features coming soon. Stay tuned for updates and improvements to make your experience better.",
-        authorName: "Jane Smith",
-        createdAt: "2024-12-03T14:30:00Z",
-        file: {
-          filename: "announcement.jpg",
-        },
-      },
-      {
-        _id: "3",
-        title: "Monthly Newsletter",
-        content:
-          "Check out what happened this month! We've made significant progress on several fronts and wanted to share our accomplishments with you.",
-        authorName: "Admin Team",
-        createdAt: "2024-12-05T09:00:00Z",
-        file: null,
-      },
-    ];
-  },
-};
+import { postAPI } from "../services/postApi";
 
 export default function UserDashboard() {
   const [posts, setPosts] = useState([]);
@@ -83,11 +44,14 @@ export default function UserDashboard() {
     setSelectedPost(null);
   };
 
-  const handleDownloadFile = (postId, filename) => {
-    // Mock download functionality
-    alert(
-      `Downloading ${filename}...\n\nIn a real app, this would download the file from the server.`
-    );
+  const handleDownloadFile = async (postId, filename) => {
+    try {
+      // Open the file in a new tab using the backend proxy endpoint
+      window.open(`/api/posts/${postId}/download`, "_blank");
+    } catch (error) {
+      console.error("Download error:", error);
+      alert("Failed to download file");
+    }
   };
 
   const getFileIcon = (filename) => {

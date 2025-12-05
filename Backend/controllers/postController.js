@@ -1,5 +1,5 @@
 // Backend/controllers/postController.js
-import PostModel from "../models/postModel.js";
+import PostModel from "../models/postModels.js"; // Changed from postModel.js to postModels.js
 import cloudinary from "../config/cloudinary.js";
 import https from "https";
 import http from "http";

@@ -1,4 +1,3 @@
-
 import express from "express";
 import {
   getAllUsers,
@@ -9,29 +8,29 @@ import {
   downloadFile,
 } from "../controllers/userController.js";
 import upload from "../middleware/uploadMiddleware.js";
-import verifyToken from "../middleware/authMiddleware.js"; // Add this
+import verifyToken from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
 // Protect all routes
 router.use(verifyToken);
 
-// Get all users
-router.get("/users", getAllUsers);
+// Get all users - Changed from /users to /
+router.get("/", getAllUsers);
 
-// Get single user
-router.get("/users/:id", getUserById);
+// Get single user - Changed from /users/:id to /:id
+router.get("/:id", getUserById);
 
-// Create user with file upload
-router.post("/users", upload.single("file"), createUser);
+// Create user with file upload - Changed from /users to /
+router.post("/", upload.single("file"), createUser);
 
-// Update user with optional file upload
-router.put("/users/:id", upload.single("file"), updateUser);
+// Update user with optional file upload - Changed from /users/:id to /:id
+router.put("/:id", upload.single("file"), updateUser);
 
-// Delete user
-router.delete("/users/:id", deleteUser);
+// Delete user - Changed from /users/:id to /:id
+router.delete("/:id", deleteUser);
 
-// Download user's file
-router.get("/users/:id/download", downloadFile);
+// Download user's file - Changed from /users/:id/download to /:id/download
+router.get("/:id/download", downloadFile);
 
 export default router;
