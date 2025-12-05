@@ -60,3 +60,7 @@ Controller responds JSON → axios receives → React updates state → UI re-re
 | **utils/**             | For helper functions (JWT generation, hashing, email sending)                   | When needed                                   |
 | **config/**            | For database and environment setup                                              | Always                                        |
 | **.env**               | Stores environment variables like DB URI, JWT secret                            | Always                                        |
+
+
+
+wwill fix the first time visit of users to the login page correctly
