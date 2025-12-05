@@ -5,6 +5,7 @@ import {
   Route,
   Navigate,
   Link,
+  useNavigate,
 } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import Login from "./components/Login";
@@ -19,9 +20,15 @@ import { LogOut, FileText, LayoutDashboard } from "lucide-react";
 
 function Navbar() {
   const { logout, user } = useAuth();
+  const navigate = useNavigate();
 
   // Check if user is admin based on role
   const isAdmin = user?.user?.role === "admin";
+
+  const handleLogout = () => {
+    logout();
+    navigate("/login");
+  };
 
   return (
     <nav className="bg-white shadow-sm border-b border-gray-200">
@@ -51,7 +58,7 @@ function Navbar() {
             {user?.user?.name} ({isAdmin ? "Admin" : "User"})
           </span>
           <button
-            onClick={logout}
+            onClick={handleLogout}
             className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700"
           >
             <LogOut className="w-4 h-4" />
@@ -70,7 +77,7 @@ function AppContent() {
   const [loadingPosts, setLoadingPosts] = useState(false);
   const [editingPost, setEditingPost] = useState(null);
 
-  // Check if user is admin
+  // Check if user is admin - FIXED to properly check role
   const isAdmin = user?.user?.role === "admin";
 
   // Load Posts when authenticated
@@ -123,11 +130,11 @@ function AppContent() {
       {/* Public Routes */}
       <Route
         path="/login"
-        element={!user ? <Login /> : <Navigate to="/dashboard" />}
+        element={!user ? <Login /> : <Navigate to="/dashboard" replace />}
       />
       <Route
         path="/signup"
-        element={!user ? <Signup /> : <Navigate to="/dashboard" />}
+        element={!user ? <Signup /> : <Navigate to="/dashboard" replace />}
       />
 
       {/* Dashboard - Different for Admin vs User */}
@@ -177,14 +184,17 @@ function AppContent() {
                 </div>
               </>
             ) : (
-              <Navigate to="/dashboard" />
+              <Navigate to="/dashboard" replace />
             )}
           </ProtectedRoute>
         }
       />
 
       {/* Default Route */}
-      <Route path="/" element={<Navigate to="/dashboard" />} />
+      <Route path="/" element={<Navigate to="/dashboard" replace />} />
+
+      {/* Catch all - redirect to dashboard */}
+      <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
   );
 }

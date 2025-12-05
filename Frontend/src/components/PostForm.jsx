@@ -177,6 +177,21 @@ export default function PostForm({ onPostCreated, editingPost, onCancelEdit }) {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
+              Content <span className="text-red-500">*</span>
+            </label>
+            <textarea
+              name="content"
+              value={formData.content}
+              onChange={handleInputChange}
+              placeholder="Enter post content"
+              rows="6"
+              className="block w-full px-3 py-2.5 border border-gray-300 rounded-md text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
               Attachment (Optional)
             </label>
 
